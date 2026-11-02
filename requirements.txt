@@ -1,4 +1,6 @@
-# GeoFish-AI requirements (Phase 1)
+# GeoFish-AI requirements for LOCAL development only (lint/tests/notebook generation).
+# Training and every notebook run use requirements-kaggle.txt on a Kaggle GPU kernel;
+# this file exists so a laptop can run scripts/validate_notebooks.py and pytest.
 # CPU-only sandbox: no CUDA wheels are available from PyPI-only networking,
 # so torch is installed together with its nvidia-* runtime deps but runs on CPU.
 

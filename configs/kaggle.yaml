@@ -1,0 +1,232 @@
+# ============================================================================
+# configs/kaggle.yaml - GeoFish-AI execution profile for Kaggle (T4 x2 / P100)
+# ============================================================================
+# Every notebook loads this file through src/config.py. Nothing is hard-coded in
+# the notebooks, so a run is reproducible from (config sha + data manifest sha).
+#
+# HARD RULE (spec enforced by src/utils/pretrained.py):
+#   pretrained.require = true  ->  a missing/unreachable checkpoint raises
+#   PretrainedDownloadError. There is NO from-scratch fallback anywhere.
+# ============================================================================
+
+profile: kaggle
+seed: 42
+deterministic: false        # true -> slower, sets cudnn deterministic
+amp: true                   # mixed precision on T4
+
+paths:
+  # Kaggle mounts every "Add Data" dataset read-only under /kaggle/input.
+  input_root: /kaggle/input
+  # /kaggle/working is the only writable location (~20 GB) and survives a
+  # "Save version -> Run & Save" as notebook output; it is also what the resume
+  # logic reads on a re-run.
+  working_root: /kaggle/working
+  repo_dir: /kaggle/working/fishes
+  cache_dir: /kaggle/working/.cache          # torch hub / HF / timm checkpoints
+  data_raw: /kaggle/working/data/raw
+  data_interim: /kaggle/working/data/interim
+  data_curated: /kaggle/working/data/curated
+  data_taxonomy: /kaggle/working/data/taxonomy
+  data_splits: /kaggle/working/data/splits
+  outputs: /kaggle/working/outputs
+  checkpoints: /kaggle/working/outputs/models
+  metrics: /kaggle/working/outputs/metrics
+  figures: /kaggle/working/outputs/figures
+  tables: /kaggle/working/outputs/tables
+  review: /kaggle/working/outputs/review
+  quarantine: /kaggle/working/outputs/quarantine
+  logs: /kaggle/working/outputs/logs
+  runs: /kaggle/working/outputs/runs
+
+# ---------------------------------------------------------------------------
+# Datasets. `kaggle_input` is the mount point that appears after you press
+# "Add Data" and pick the dataset whose slug is written next to it.
+# `required: true` + missing mount  ->  DatasetMissingError (not a skip).
+# ---------------------------------------------------------------------------
+datasets:
+  large_scale_fish:                 # Kaggle 'A Large Scale Fish Dataset' (crowww)
+    kaggle_input: /kaggle/input/a-large-scale-fish-dataset
+    required: true
+    task: classification
+    layout: "Dataset/{train,val,test}/<class folder>/<image>"
+    note: "11 folders in the commonly mirrored copy (9 official + 'animal fish' + 'animal fish bass')"
+  bd_indigenous_fish:               # BDIndigenousFish2019 (8 Bangladeshi freshwater species)
+    kaggle_input: /kaggle/input/bdindigenousfish2019
+    required: false
+    task: classification
+    layout: "<class folder>/<image>"
+  indian_seafood_fish:              # Mendeley mxf2c45yb5 v1 - the 8-folder audit target
+    kaggle_input: /kaggle/input/indian-seafood-fish-dataset
+    required: false
+    task: classification
+    layout: "<class folder>/<image>"
+    note: "spec section 4.2 audit target; needs manual upload of the Mendeley archive"
+  as_fishfresh:                     # Mendeley sdhp9bmrz5 v2 - 48 Assam species
+    kaggle_input: /kaggle/input/as-fishfresh
+    required: false
+    task: classification
+    layout: "<class folder>/<image>"
+    note: "augmented copies train-only, originals for val/test"
+  qut_fish_468:                     # Kaggle 'Fish Species Image Data' (468 species)
+    kaggle_input: /kaggle/input/fish-species-image-data
+    required: false
+    task: classification
+    layout: "Fish_Data/images/<species>/<image>"
+  depondfi:                         # DePondFi pond detection set
+    kaggle_input: /kaggle/input/depondfi
+    required: false
+    task: detection
+    layout: "images/*.jpg + labels/*.txt  (YOLO) or annotations/*.xml (VOC)"
+  fish_detection_yolo:              # fallback detection set (19 classes -> collapsed to `fish`)
+    kaggle_input: /kaggle/input/fish-detection-yolo
+    required: true
+    task: detection
+    layout: "data/images/*.jpg + data/labels/*.txt"
+  jh_fish_field:                    # own field data (JH-Fish) - schema spec section 9
+    kaggle_input: /kaggle/input/jh-fish-field
+    required: false
+    task: field
+    layout: "clips/*.mp4 | images/*.jpg + field_schema.csv"
+  videos:                           # clips used for tracking + counting
+    kaggle_input: /kaggle/input/fish-videos
+    required: false
+    task: video
+    layout: "*.mp4"
+
+# ---------------------------------------------------------------------------
+# Pretrained weights - REQUIRED. Timm / torchvision / Ultralytics / open_clip
+# all read from these caches so an interrupted session resumes without a
+# re-download.
+# ---------------------------------------------------------------------------
+pretrained:
+  require: true                  # never initialise randomly
+  on_failure: raise              # PretrainedDownloadError, never a silent fallback
+  allow_download: true
+  download_retries: 3
+  caches:
+    TORCH_HOME: /kaggle/working/.cache/torch
+    HF_HOME: /kaggle/working/.cache/huggingface
+    TIMM_HOME: /kaggle/working/.cache/timm
+    ULTRALYTICS_HOME: /kaggle/working/.cache/ultralytics
+  classifiers:                   # spec section 1 candidate zoo -> real timm tags
+    resnet50: resnet50.a1_in1k
+    efficientnetv2_s: tf_efficientnetv2_s.in21k_ft_in1k
+    convnext_tiny: convnext_tiny.in12k_ft_in1k
+    convnext_small: convnext_small.fb_in22k_ft_in1k
+    vit_b16: vit_base_patch16_224.augreg_in21k_ft_in1k
+    dinov2_vits14: vit_small_patch14_dinov2.lvd142m
+  embeddings:                    # audit + dedupe embedding space (spec 4.3.1)
+    name: dinov2_vits14
+    cosine_duplicate_threshold: 0.97
+  bioclip:                       # zero-shot cross-check (spec 4.3.3)
+    open_clip_tag: "hf-hub:imageomics/bioclip"
+    prompt_template: "a photo of a {species}, a species of fish"
+  detectors:                     # spec section 1 detector zoo
+    yolo11n: yolo11n.pt
+    yolo11s: yolo11s.pt
+    yolo11m: yolo11m.pt
+    yolo12s: yolo12s.pt
+    rtdetr_l: rtdetr-l.pt
+  tracker:
+    primaries: [bytetrack.yaml]
+    comparisons: [botsort.yaml]
+  ultralytics_min_version: "8.4.0"   # YOLOv12 support
+
+# ---------------------------------------------------------------------------
+# Training budgets (fits one 12 h Kaggle session; each stage is resumable)
+# ---------------------------------------------------------------------------
+detector:
+  imgsz: 960
+  epochs: 60
+  batch: 8
+  patience: 15
+  single_class: fish              # all source classes collapse to this one
+  augment:                        # spec section 6
+    mosaic: 0.8
+    hsv_h: 0.02
+    hsv_s: 0.6
+    hsv_v: 0.4
+    blur: 0.01
+    motion_blur_p: 0.15           # custom callback
+    low_light_p: 0.15             # custom callback (gamma)
+    turbidity_haze_p: 0.20        # custom callback (haze overlay)
+    fliplr: 0.5
+  models: [yolo11n, yolo11s, yolo11m, yolo12s, rtdetr_l]
+
+classifier:
+  input_size: 288                 # 224-384 per spec
+  epochs_stage1_head: 4
+  epochs_stage2_full: 26
+  batch: 32
+  optimizer: adamw
+  lr_head: 1.0e-3
+  lr_backbone: 1.0e-4
+  weight_decay: 0.05
+  layerwise_lr_decay: 0.75
+  label_smoothing: 0.1
+  loss: class_balanced_ce        # or focal
+  focal_gamma: 2.0
+  mixup: 0.2
+  cutmix: 1.0
+  mixup_prob: 0.5
+  hierarchical_loss_weights: {species: 1.0, genus: 0.3, family: 0.15}
+  open_set:
+    method: energy              # energy or max_softmax
+    temperature: 1.0
+    target_tpr: 0.95            # threshold tuned on val only
+  rare_species_min_images: 10
+  models: [resnet50, efficientnetv2_s, convnext_tiny, convnext_small, vit_b16, dinov2_vits14]
+
+tracking:
+  tracker: bytetrack.yaml
+  comparisons: [botsort.yaml]
+  conf: 0.25
+  iou: 0.5
+  min_track_frames: 10            # drop shorter tracks before counting
+  species_vote: confidence_weighted
+
+density:
+  p_detect_source: calibration_file   # calibration_file | assumption
+  calibration_file: /kaggle/input/jh-fish-field/calibration/p_detect.csv
+  bootstrap_iters: 2000
+  ci: 0.95
+  grid_m: 250                     # grid-cell size for maps
+  camera_coverage_m2: 25.0        # per-camera footprint, override per site
+  mean_depth_m: 2.0               # for volumetric density when the site has depth
+
+mapping:
+  crs_metric: EPSG:32645          # UTM 45N (Jharkhand)
+  basemap: OpenStreetMap
+  kde_bandwidth_m: 500
+  animate_weeks: true
+
+# ---------------------------------------------------------------------------
+# Audit thresholds (spec 4.3) - frozen so a run is reproducible
+# ---------------------------------------------------------------------------
+audit:
+  quality:
+    laplacian_var_threshold: 60      # blurry below this (512 px long side)
+    min_short_side: 224
+    never_delete: true               # excluded + recorded, never deleted
+  label_noise:
+    folds: 5
+    min_confidence_to_apply_relabel: 0.90
+  review_pack:
+    images_per_class: 25
+    thumb_px: 224
+    grid_cols: 5
+
+resume:
+  enabled: true
+  strategy: last_complete_stage    # skip stages already marked done in state.json
+  save_every_epochs: 1
+  keep_last_k_checkpoints: 3
+  # To continue a run after a Kaggle session was lost, attach the previous
+  # notebook output ("Your Work" -> the saved version -> Add as input) and list
+  # the mount here; the state + checkpoints are imported from it.
+  previous_outputs: []             # e.g. ["/kaggle/input/geofish-04-classifier-output"]
+
+evaluation:
+  test_split_touched_once: true
+  seeds: [42, 1337, 2024]          # mean +- std over 3 seeds (spec section 7)
+  metrics_dir: /kaggle/working/outputs/metrics

@@ -149,3 +149,64 @@ Bengali proxy supplies 2 classes / 620 images to supervised training and the rem
 padded.
 **Cost.** Far fewer South-Asian classes than the 48-species AS-FishFresh set would have
 provided.
+
+---
+
+# Pivot: Kaggle execution profile (2026-11-02, later the same day)
+
+The sandbox was confirmed unfit for training (CPU-only, 2 vCPU, no pretrained weights
+reachable). The project now ships a **Kaggle execution profile** instead of running phases
+locally. The entries above stay as history of the restricted-environment attempt; the ones
+they contradict are marked superseded.
+
+## D-14 · Supersedes D-03 · Pretrained weights are mandatory, from-scratch is removed
+**Decision.** `configs/kaggle.yaml` sets `pretrained.require: true` and
+`pretrained.on_failure: raise`, and `src/utils/pretrained.py` is now the only construction
+path for models. It refuses `pretrained=False`, refuses Ultralytics `.yaml` model files
+(random init), verifies that loaded tensors are not a degenerate initialisation, retries
+transient download failures, and raises `PretrainedDownloadError` containing the exact
+Kaggle fix (enable internet, re-run, or attach the checkpoint as a dataset).
+`src/config.py` refuses to run if `pretrained.require` is not true.
+`scripts/validate_notebooks.py` fails on any reintroduction of `pretrained=False`,
+`weights=None`, `.yaml` models, hard-coded `/kaggle/input` paths or literal seeds.
+**Consequence.** Every number produced on Kaggle benefits from ImageNet/BioCLIP-style
+initialisation; the "from scratch because the network was blocked" caveat no longer applies.
+**Cost.** The notebooks need *Internet: On*. Offline Kaggle runs are impossible by design.
+
+## D-15 · Supersedes D-10 · Execution environment is Kaggle, not this sandbox
+**Decision.** Six notebooks (`01_data_download` … `06_density_map`) run top to bottom on a
+Kaggle T4 × 2 kernel, write everything to `/kaggle/working`, and resume from
+`outputs/logs/state.json`. Datasets come from `/kaggle/input` mounts declared in
+`configs/kaggle.yaml`; a missing required mount raises `DatasetMissingError` with the fix,
+never a silent skip. Ultralytics is pinned to `>=8.4.0` in `requirements-kaggle.txt`
+because that is where YOLOv12 and RT-DETR checkpoint names exist.
+**Cost.** None for correctness; wall-clock is bounded by Kaggle session limits, so training
+budgets live in the config and each architecture is its own resumable stage.
+
+## D-16 · Supersedes the "audit could not run" parts of D-05/D-12 · Audit now runs for real
+**Decision.** With internet enabled, the audit executes as specified: DINOv2 embeddings for
+duplicate/near-duplicate grouping (cosine ≥ 0.97) *and* for out-of-fold label-noise
+probabilities, **BioCLIP zero-shot** as the third opinion, cleanlab on the OOF probabilities,
+contact-sheet review packs, and a quarantine index. A relabel is applied only when cleanlab
+and every available opinion agree and confidence passes
+`audit.label_noise.min_confidence_to_apply_relabel` (0.90); everything else is quarantined.
+The previously "unavailable" substitutions (CNN/ORB instead of CLIP embeddings, no BioCLIP)
+are retired; `configs/audit.yaml` was deleted and its thresholds moved into
+`configs/kaggle.yaml → audit`.
+**Still true from D-04/D-05:** without the Mendeley datasets mounted, the eight §4.2 folder
+verdicts remain *pending imagery*, and coverage vs the FishBase India checklist is
+`not_computable`. `outputs/AUDIT_REPORT.md` states both explicitly.
+
+## D-17 · Label-map confidence does not rewrite training labels by itself
+**Decision.** Resolving a folder to a scientific name (`label_map.csv`) is metadata work and
+does not change what the classifier learns. Only an **audit relabel** (unanimous cleanlab +
+kNN + BioCLIP evidence) changes `dataset_label`. This keeps a medium-confidence name
+resolution from silently rewriting a label, which was the failure mode §4.2 is about.
+**Cost.** Taxonomy coverage and label coverage are reported as two separate numbers.
+
+## D-18 · Legacy local scripts are kept but are not part of the Kaggle flow
+**Decision.** `scripts/00_probe_network.py` … `scripts/03_write_dataset_docs.py`,
+`scripts/setup_env.sh` and `requirements.txt` document the restricted-sandbox attempt
+(they produced `outputs/DATASETS.md`). They are not used by any notebook, are not required
+for a Kaggle run, and must not be mistaken for it. `outputs/DATASETS.md` remains as the
+record of what that environment could and could not reach.

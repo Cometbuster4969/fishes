@@ -1,8 +1,15 @@
 # AUDIT_PLAN.md — label audit & mismatch fixes (spec §4.2, §4.3)
 
 **Nothing is trained until this plan has run.** Every parameter below is fixed in
-`configs/audit.yaml` so the run is reproducible; every count below was measured from disk
-(`outputs/tables/raw_inventory_by_class.csv`), not read from a paper.
+`configs/kaggle.yaml → audit` so the run is reproducible; every count below was measured
+from disk (`outputs/tables/raw_inventory_by_class.csv`) in the restricted sandbox, not read
+from a paper.
+
+> **Update (same day):** execution moved to Kaggle (`notebooks/02_taxonomy_audit.ipynb`),
+> where the network is open. The substitutions forced by the restricted sandbox — pHash/ORB
+> instead of DINOv2 embeddings, and no BioCLIP — are **retired**: on Kaggle the audit uses
+> real DINOv2 embeddings (cosine ≥ 0.97) and real BioCLIP zero-shot. See DECISIONS D-14/D-16.
+> The stages and thresholds below are unchanged and are what the notebook implements.
 
 ---
 
@@ -54,10 +61,11 @@ Six stages, all logged to `outputs/tables/`; final artefact `outputs/AUDIT_REPOR
 - **Perceptual**: `pHash` (64-bit, `imagehash`, DCT-based). Candidate pair if
   **Hamming ≤ 6**; confirmed duplicate if additionally **HSV-histogram correlation ≥ 0.97**.
 - **Resized-copy catcher**: 32×32 grayscale, normalized cross-correlation ≥ 0.995.
-- **Embedding stage** (spec asks for CLIP/DINOv2 cosine > 0.97): *not available* — those
-  weights cannot be downloaded (DECISIONS D-03). Substitute: penultimate-layer embeddings
-  of the from-scratch audit CNN **plus** ORB keypoint matching, cosine ≥ 0.97 / ≥ 40
-  inlier matches. Recorded explicitly as a weaker substitute in `AUDIT_REPORT.md`.
+- **Embedding stage**: frozen **DINOv2** (`vit_small_patch14_dinov2`, timm) embeddings,
+  cosine ≥ `pretrained.embeddings.cosine_duplicate_threshold` (0.97), computed once and
+  cached for the split builder and the label-noise pass. On Kaggle the checkpoint is
+  downloaded on first use; if it cannot be, the notebook raises `PretrainedDownloadError`
+  rather than degrading the audit.
 - Scope: **within and across splits** — the shipped `Dataset/{train,val,test}` folders of
   the Kaggle copy are pooled first, so cross-split duplicates are found and all of a
   cluster goes to one side of the new split (§5).
@@ -65,19 +73,17 @@ Six stages, all logged to `outputs/tables/`; final artefact `outputs/AUDIT_REPOR
   `data/curated/dedup_map.csv`.
 
 ### Stage B — label-noise detection (§4.3.2)
-- 5-fold out-of-fold predictions from a small from-scratch CNN (128 px, ~6 epochs per
-  fold, seed 42) — this is *not* the final model.
+- 5-fold out-of-fold probabilities from a multinomial logistic probe on the frozen DINOv2
+  features (seed 42). This is *not* the final model and never sees the test split.
 - `cleanlab.filter.find_label_issues` (confident learning) on the OOF `pred_probs`.
 - Output: `outputs/tables/suspect_labels.csv`
   (`path, given_label, predicted_label, self_confidence, confidence, cleanlab_rank`).
 
 ### Stage C — third-opinion cross-check (§4.3.3)
-- **BioCLIP zero-shot: unavailable** (weights blocked; DECISIONS D-03). Code path exists in
-  `src/audit/zero_shot.py`, reports `available: false`.
-- Substitute opinions, both offline:
-  1. colour/texture descriptor (HSV histogram + LBP + HOG-lite) with a class centroid /
-     kNN vote;
-  2. the OOF CNN's top-1.
+- **BioCLIP zero-shot** (`hf-hub:imageomics/bioclip` via open_clip) scores every image
+  against the candidate species prompts from `label_map.csv`.
+- Additional independent opinion: cosine kNN vote on the DINOv2 features.
+- The out-of-fold linear-probe top-1 (stage B) is the cleanlab signal itself.
 - A relabel is only applied if **cleanlab flags it AND both substitute opinions agree with
   the same alternative class**. Otherwise → quarantine.
 
@@ -95,6 +101,7 @@ Six stages, all logged to `outputs/tables/`; final artefact `outputs/AUDIT_REPOR
   relabels, unresolved names) with a `REVIEW_INDEX.csv` the reviewer signs off in.
 - `outputs/quarantine/` — every relabel below high confidence, every unresolved name, every
   low-quality image that is *not* deleted (we never delete; we exclude + record).
+- Thresholds now live in `configs/kaggle.yaml → audit` (`configs/audit.yaml` was removed).
 
 ### Stage F — report
 `outputs/AUDIT_REPORT.md`: before/after class counts, duplicates removed, relabels applied
@@ -155,5 +162,7 @@ duplicate cluster is resolved to one split side, (c) every applied relabel has t
 agreement, (d) the quarantine index exists. Phase 5 reads only
 `data/curated/approved_labels.csv`.
 
-**Estimated runtime** (2 CPU cores): Stage A pHash over 15,298 images ≈ 6 min; Stage B
-5-fold CPU training at 128 px ≈ 55 min; Stage D ≈ 4 min; Stage E contact sheets ≈ 2 min.
+**Estimated runtime** on a Kaggle T4 ×2 for ~13k images: embeddings ≈ 3–6 min (GPU),
+BioCLIP zero-shot ≈ 4–8 min, cleanlab probe ≈ 1 min, quality pass ≈ 3 min, contact sheets
+≈ 2 min. Estimates only — the first real run prints actual timings into
+`outputs/logs/state.json`.
