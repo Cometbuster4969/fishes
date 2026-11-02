@@ -1,0 +1,58 @@
+# GeoFish-AI requirements (Phase 1)
+# CPU-only sandbox: no CUDA wheels are available from PyPI-only networking,
+# so torch is installed together with its nvidia-* runtime deps but runs on CPU.
+
+# --- core / scientific ---
+numpy==1.26.4
+pandas==2.2.3
+scipy==1.14.1
+scikit-learn==1.5.2
+scikit-image==0.24.0
+matplotlib==3.9.2
+seaborn==0.13.2
+pyarrow==17.0.0
+tqdm==4.66.5
+pyyaml==6.0.2
+requests==2.32.3
+pillow==10.4.0
+imagehash==4.3.1
+opencv-python-headless==4.10.0.84
+
+# --- deep learning ---
+torch==2.5.1
+torchvision==0.20.1
+timm==1.0.11
+einops==0.8.0
+torchmetrics==1.4.2
+tensorboard==2.17.1
+
+# --- detection / tracking ---
+ultralytics==8.3.29
+lap==0.5.12
+filterpy==1.4.5
+# ByteTrack reference implementation (pure python, no build needed)
+
+# --- label audit ---
+cleanlab==2.6.6
+
+# --- open-set / zero-shot baseline (BioCLIP-style, via open_clip) ---
+open-clip-torch==2.26.1
+ftfy==6.3.1
+regex==2024.9.11
+
+# --- metrics ---
+motmetrics==1.4.0
+
+# --- geospatial / mapping ---
+geopandas==1.0.1
+shapely==2.0.6
+pyproj==3.7.0
+folium==0.17.0
+contextily==1.6.2
+mapclassify==2.8.1
+
+# --- gradient boosting (species ~ water parameters) ---
+lightgbm==4.5.0
+
+# --- dev ---
+pytest==8.3.3

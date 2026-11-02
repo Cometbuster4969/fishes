@@ -1,0 +1,61 @@
+# configs/audit.yaml - frozen parameters for the label audit (spec 4.3)
+# Consumed by scripts/12_audit_labels.py. Change only with a DECISIONS.md entry.
+seed: 42
+image_extensions: [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"]
+
+dedupe:
+  exact: sha256_bytes_and_exif_stripped
+  phash:
+    hash_size: 8
+    max_hamming: 6           # candidate pair
+    confirm_hist_corr: 0.97  # HSV histogram correlation needed to confirm
+  resized_copy:
+    size: 32
+    ncc_threshold: 0.995
+  embedding:                 # spec asks for CLIP/DINOv2 cosine > 0.97
+    available: false         # weights unreachable in this environment (DECISIONS D-03/D-12)
+    substitute: cnn_penultimate_plus_orb
+    cosine_threshold: 0.97
+    orb_min_inliers: 40
+  # duplicates are pooled across the shipped train/val/test folders, then all members of
+  # a cluster are forced onto the same side of the new split (spec 5)
+
+label_noise:
+  model: small_cnn_from_scratch
+  input_size: 128
+  folds: 5
+  epochs_per_fold: 6
+  method: cleanlab.filter.find_label_issues
+  min_class_size_for_cleanlab: 20
+
+third_opinion:
+  bioclip_zero_shot:
+    available: false         # DECISIONS D-03
+    model_name: imageomics/bioclip
+    prompt_template: "a photo of a {species}, a species of fish"
+  substitutes:
+    - colour_texture_knn     # HSV histogram + LBP + HOG-lite, kNN vote
+    - oof_cnn_top1
+  apply_relabel_requires: [cleanlab_flag, substitute_1_agree, substitute_2_agree]
+  min_confidence: 0.90
+
+quality:
+  laplacian_var_threshold: 60   # flagged as blurry below this (512 px long side)
+  min_short_side: 224
+  never_delete: true            # exclude + record instead
+
+review_pack:
+  images_per_class: 25
+  thumb_size: 224
+  grid_cols: 5
+  write_review_index: true
+
+hierarchical:
+  # family -> genus -> species heads; unknown node for unresolved labels (spec 1)
+  enable: true
+  unknown_label: "unknown"
+
+policy:
+  apply_only_if_confidence: high
+  quarantine_everything_else: true
+  relabel_requires_all_three: true

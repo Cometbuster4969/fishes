@@ -1,0 +1,20 @@
+dataset,class_dir,n_images,n_unreadable,bytes,min_bytes,max_bytes
+kaggle_large_scale_fish,animal fish,1803,0,52963646,5424,58263
+kaggle_large_scale_fish,animal fish bass,53,0,1533673,16608,48188
+kaggle_large_scale_fish,fish sea_food black_sea_sprat,972,0,24141984,18240,32033
+kaggle_large_scale_fish,fish sea_food gilt_head_bream,965,0,24458145,20542,30071
+kaggle_large_scale_fish,fish sea_food hourse_mackerel,956,0,24013063,19848,28861
+kaggle_large_scale_fish,fish sea_food red_mullet,960,0,25795775,20829,30277
+kaggle_large_scale_fish,fish sea_food red_sea_bream,957,0,24120844,20957,30252
+kaggle_large_scale_fish,fish sea_food sea_bass,962,0,23721762,18928,28434
+kaggle_large_scale_fish,fish sea_food shrimp,965,0,22959241,20072,26609
+kaggle_large_scale_fish,fish sea_food striped_red_mullet,941,0,21964119,18793,29243
+kaggle_large_scale_fish,fish sea_food trout,970,0,24721835,20722,29212
+bd_indigenous_fish,Byen,500,0,29422861,44309,80559
+bd_indigenous_fish,Foli,300,0,22410420,55575,98866
+bd_indigenous_fish,Koi,380,0,25600812,48420,100132
+bd_indigenous_fish,Sing,400,0,26053041,48394,86694
+bd_indigenous_fish,Sol,120,0,14938709,75895,166610
+bd_indigenous_fish,Sorputi,200,0,15937264,53951,107450
+bd_indigenous_fish,Taki,390,0,25259499,46794,91472
+bd_indigenous_fish,Tengra,320,0,20780403,49744,84859

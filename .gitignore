@@ -1,0 +1,36 @@
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+*.egg-info/
+.pytest_cache/
+
+# --- large data (kept in the workspace, never in git) ---
+data/raw/
+data/interim/
+data/curated/
+data/splits/
+data/raw/*.zip
+*.zip
+*.tar.gz
+
+# --- run artefacts ---
+outputs/models/
+outputs/logs/
+outputs/runs/
+outputs/review/contact_sheets/
+outputs/quarantine/
+outputs/**/*.tmp
+
+# --- keep these tracked ---
+!outputs/DECISIONS.md
+!outputs/DATASETS.md
+!outputs/AUDIT_REPORT.md
+!outputs/AUDIT_PLAN.md
+!data/taxonomy/*.csv
+
+# --- os ---
+.DS_Store
+Thumbs.db

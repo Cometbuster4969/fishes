@@ -1,0 +1,113 @@
+{
+  "checked_at": "2026-11-02T15:31:18Z",
+  "results": [
+    {
+      "url": "https://data.mendeley.com/",
+      "ok": false,
+      "status": null,
+      "content_length": null,
+      "error": "URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
+      "checked_at": "2026-11-02T15:31:18Z",
+      "host": "data.mendeley.com"
+    },
+    {
+      "url": "https://www.kaggle.com/",
+      "ok": false,
+      "status": null,
+      "content_length": null,
+      "error": "URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
+      "checked_at": "2026-11-02T15:31:24Z",
+      "host": "www.kaggle.com"
+    },
+    {
+      "url": "https://api.inaturalist.org/v1/observations?per_page=1",
+      "ok": false,
+      "status": null,
+      "content_length": null,
+      "error": "URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
+      "checked_at": "2026-11-02T15:31:30Z",
+      "host": "api.inaturalist.org"
+    },
+    {
+      "url": "https://api.gbif.org/v1/occurrence/search?limit=1",
+      "ok": false,
+      "status": null,
+      "content_length": null,
+      "error": "URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
+      "checked_at": "2026-11-02T15:31:36Z",
+      "host": "api.gbif.org"
+    },
+    {
+      "url": "https://www.fishbase.se/",
+      "ok": false,
+      "status": null,
+      "content_length": null,
+      "error": "URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
+      "checked_at": "2026-11-02T15:31:42Z",
+      "host": "www.fishbase.se"
+    },
+    {
+      "url": "https://www.marinespecies.org/rest/",
+      "ok": false,
+      "status": null,
+      "content_length": null,
+      "error": "URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
+      "checked_at": "2026-11-02T15:31:48Z",
+      "host": "www.marinespecies.org"
+    },
+    {
+      "url": "https://researcharchive.calacademy.org/",
+      "ok": false,
+      "status": null,
+      "content_length": null,
+      "error": "URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
+      "checked_at": "2026-11-02T15:31:55Z",
+      "host": "researcharchive.calacademy.org"
+    },
+    {
+      "url": "https://github.com/",
+      "ok": true,
+      "status": 200,
+      "content_length": null,
+      "error": null,
+      "checked_at": "2026-11-02T15:31:55Z",
+      "host": "github.com"
+    },
+    {
+      "url": "https://api.github.com/",
+      "ok": true,
+      "status": 200,
+      "content_length": 2262,
+      "error": null,
+      "checked_at": "2026-11-02T15:31:55Z",
+      "host": "api.github.com"
+    },
+    {
+      "url": "https://codeload.github.com/",
+      "ok": true,
+      "status": 200,
+      "content_length": null,
+      "error": null,
+      "checked_at": "2026-11-02T15:31:56Z",
+      "host": "codeload.github.com"
+    },
+    {
+      "url": "https://pypi.org/",
+      "ok": true,
+      "status": 200,
+      "content_length": 27885,
+      "error": null,
+      "checked_at": "2026-11-02T15:31:56Z",
+      "host": "pypi.org"
+    },
+    {
+      "url": "https://huggingface.co/",
+      "ok": false,
+      "status": null,
+      "content_length": null,
+      "error": "URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
+      "checked_at": "2026-11-02T15:32:02Z",
+      "host": "huggingface.co"
+    }
+  ]
+}

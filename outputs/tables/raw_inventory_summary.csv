@@ -1,0 +1,5 @@
+dataset,type,n_images,n_classes,n_unreadable,bytes
+kaggle_large_scale_fish,classification,10504,11,0,270394087
+fish_detection_proxy,detection,2184,19,0,466656847
+bd_indigenous_fish,classification,2610,8,0,180403009
+taxonomy_fishdex,taxonomy,0,0,0,0

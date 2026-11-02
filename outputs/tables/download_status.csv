@@ -1,0 +1,22 @@
+item,source,url,ok,status,note
+indian_seafood_fish,official,https://data.mendeley.com/public-api/datasets/mxf2c45yb5/files?folder_id=root&version=1,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+indian_seafood_fish,official,https://data.mendeley.com/datasets/mxf2c45yb5/1,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+as_fishfresh,official,https://data.mendeley.com/public-api/datasets/sdhp9bmrz5/files?folder_id=root&version=2,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+as_fishfresh,official,https://data.mendeley.com/datasets/sdhp9bmrz5/2,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+depondfi,official,https://github.com/DePondFi23/DePondFi,True,200,
+depondfi,official,https://api.github.com/repos/DePondFi23/DePondFi/git/trees/main?recursive=1,True,200,
+qut_fish_468,official,https://www.kaggle.com/datasets/sripaadsrinivasan/fish-species-image-data,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+qut_fish_468,official,https://www.kaggle.com/api/v1/datasets/download/sripaadsrinivasan/fish-species-image-data,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+kaggle_large_scale_fish,official,https://www.kaggle.com/datasets/crowww/a-large-scale-fish-dataset,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+kaggle_large_scale_fish,official,https://www.kaggle.com/api/v1/datasets/download/crowww/a-large-scale-fish-dataset,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+inat_gbif_india,official,https://api.inaturalist.org/v1/observations,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+inat_gbif_india,official,https://api.gbif.org/v1/occurrence/search,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+dried_fish,official,,False,,no official URL resolvable from this environment
+jh_fish,official,,False,,no official URL resolvable from this environment
+fishbase_india,official,https://www.fishbase.se/,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+fishbase_india,official,https://www.marinespecies.org/rest/,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+fishbase_india,official,https://researcharchive.calacademy.org/research/ichthyology/catalog/fishcatmain.asp,False,,URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>
+kaggle_large_scale_fish,mirror:tar-ang-2004/Fish_Classification@c580b37c,https://codeload.github.com/tar-ang-2004/Fish_Classification/zip/c580b37cdc94f41017d16692378ca46091edf334,True,200,
+fish_detection_proxy,mirror:1wenjinjie/yolov10-fish-detection@9971329e,https://codeload.github.com/1wenjinjie/yolov10-fish-detection/zip/9971329e890d8ed0bbf31e71bd198817c70173f4,True,200,
+bd_indigenous_fish,mirror:knowaminul/BDIndigenousFish2019@92889c38,https://codeload.github.com/knowaminul/BDIndigenousFish2019/zip/92889c3890ac6bd372b53f60dd7b1a1c7c368b64,True,200,
+taxonomy_fishdex,mirror:ScottMorris123/FishDex@fcf8e7c7,https://codeload.github.com/ScottMorris123/FishDex/zip/fcf8e7c7f0b233ce8a1d8157c5ccb3a460d36f76,True,200,
