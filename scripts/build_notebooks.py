@@ -16,13 +16,24 @@ REPO = "https://github.com/Cometbuster4969/fishes.git"
 BRANCH = "arena/3dc076ac-fishes"
 
 
+def _lines(text: str) -> list[str]:
+    """nbformat source lines: every line keeps its trailing newline except the last.
+
+    Jupyter/nbformat rejoin a source array with ''.join(...), so lines WITHOUT their
+    newline collapse into a single line - and because each of our code cells starts with
+    a `# @title` comment, the whole cell would silently become one comment.
+    """
+    lines = text.strip("\n").split("\n")
+    return [line + "\n" for line in lines[:-1]] + [lines[-1]]
+
+
 def md(text: str) -> dict:
-    return {"cell_type": "markdown", "metadata": {}, "source": text.strip("\n").split("\n")}
+    return {"cell_type": "markdown", "metadata": {}, "source": _lines(text)}
 
 
 def code(text: str) -> dict:
     return {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [],
-            "source": text.strip("\n").split("\n")}
+            "source": _lines(text)}
 
 
 def setup_cells(nb: str, require_gpu: bool, pip: str = "-r requirements-kaggle.txt") -> list[dict]:
@@ -86,12 +97,12 @@ if REPO is None:
                          capture_output=True, text=True)
     if res.returncode != 0:
         raise RuntimeError(
-            "could not clone " + REPO_SLUG + "\n  git: " + (res.stderr or "")[:300] +
-            "\n  The repo is PRIVATE. Do ONE of these, then re-run this cell:" +
-            "\n   1) Add-ons -> Secrets -> new secret GITHUB_TOKEN = a GitHub PAT with 'repo'"
+            "could not clone " + REPO_SLUG + "\\n  git: " + (res.stderr or "")[:300] +
+            "\\n  The repo is PRIVATE. Do ONE of these, then re-run this cell:" +
+            "\\n   1) Add-ons -> Secrets -> new secret GITHUB_TOKEN = a GitHub PAT with 'repo'"
             " scope; enable it for this notebook." +
-            "\n   2) Upload the repo as a Kaggle Dataset (read-only under /kaggle/input)." +
-            "\n   3) Make the repository public on GitHub.")
+            "\\n   2) Upload the repo as a Kaggle Dataset (read-only under /kaggle/input)." +
+            "\\n   3) Make the repository public on GitHub.")
     REPO = CLONE_DIR
 
 os.chdir(REPO)
@@ -123,7 +134,7 @@ if Path("/kaggle").exists():
         print("missing optional:", rep["missing_optional"] or "none")
     if rc != 0:
         raise RuntimeError(
-            "environment incomplete - read the REQUIRED PACKAGES MISSING block above.\n"
+            "environment incomplete - read the REQUIRED PACKAGES MISSING block above.\\n"
             "Then Run -> Restart (not just re-run), and run cells 0a + 0b again.")
 else:
     print("not on Kaggle: skipped (use requirements.txt for local dev)")
@@ -151,30 +162,40 @@ nb01 = setup_cells("01_data_download", require_gpu=False) + [
     md("""
 ## 1 · Check the mounts
 Kaggle datasets are read-only under `/kaggle/input`. The table below is generated from
-`configs/kaggle.yaml`; a **required** dataset that is missing raises with the exact
-instructions instead of silently skipping.
+`configs/kaggle.yaml`.
+
+**This cell never stops the notebook.** It reports every declared dataset, then records
+`MOUNT_GAPS` - the required ones you still have to attach. The hard stop happens later,
+in the first cell that actually needs the data (section 3), so that the environment
+(section 0) and the pretrained weights (section 2) are still proven to work while you are
+chasing datasets. That is deliberate: a broken download and a missing dataset look
+identical if you only see the first error.
 """),
     code("""
-# @title 1a · Mount report + required-dataset enforcement
+# @title 1a · Mount report (reports, never raises)
 import pandas as pd
-from src.config import DatasetMissingError
+from src.config import DatasetMissingError  # used by 3a
 
-# report EVERY declared dataset first (never abort on the first missing one),
-# then raise one error naming everything that still has to be attached
+# Report EVERY declared dataset - do not abort on the first missing one. A missing
+# mount is recorded in MOUNT_GAPS and only becomes fatal in 3a, so the weight checks
+# in 2a still run.
 mounts = pd.DataFrame(cfg.dataset_report())
-display(mounts)
+display(mounts[["dataset", "task", "required", "status", "path"]])
 mounts.to_csv(cfg.paths.tables / "mounts.csv", index=False)
 
-missing = cfg.missing_required()
-if missing:
-    raise DatasetMissingError(
-        f"{len(missing)} required dataset(s) not mounted: {missing}\\n"
-        "  Kaggle right sidebar -> Add Input -> attach each one, then re-run.\\n"
-        "  Expected mounts:\\n" +
-        "\\n".join(f"    {r['dataset']:22s} {r['path']}"
-                  for r in mounts.to_dict("records") if r["required"]))
-print(f"all {len(mounts)} datasets accounted for; "
-      f"{int((mounts.status == 'ok').sum())} mounted")
+MOUNT_GAPS = cfg.missing_required()          # required datasets not attached yet
+n_ok = int((mounts.status == "ok").sum())
+
+if MOUNT_GAPS:
+    print(f"{len(MOUNT_GAPS)} required dataset(s) MISSING: {MOUNT_GAPS}")
+    print("   Kaggle right sidebar -> Add Input -> attach each one:")
+    for r in mounts.to_dict("records"):
+        if r["required"] and r["status"] != "ok":
+            print(f"     {r['dataset']:22s} expected at {r['path']}")
+    print("   Re-run this cell after attaching. Sections 0 and 2 can be run NOW -")
+    print("   the notebook stops at 3a, the first place that needs images.")
+else:
+    print(f"all {len(mounts)} declared datasets mounted ({n_ok} ok)")
 """),
     md("""
 ## 2 · Pretrained weights warm-up
@@ -211,6 +232,16 @@ else:
             print(report)
             st.metric(**{k: 1 for k in report})
 """),
+    code("""
+# @title 2b · Verdict: weights vs data
+_weights = "WEIGHTS OK" if tr.is_done("pretrained.warmup") else "WEIGHTS UNVERIFIED"
+if MOUNT_GAPS:
+    print(f"{_weights}, DATA MISSING -> attach {MOUNT_GAPS}")
+    print("   Everything except the image data is ready. Attach the datasets above,")
+    print("   re-run 1a, then continue with 3a.")
+else:
+    print(f"{_weights}, DATA OK -> continue with 3a")
+"""),
     md("""
 ## 3 · Classification corpus manifest
 One row per image: `path, dataset, label, dataset_label, orig_split`. The shipped
@@ -219,7 +250,16 @@ notebook 02.
 """),
     code("""
 # @title 3a · Discover every classification image
+from src.config import DatasetMissingError
 from src.data.discovery import discover_classification
+
+# first cell that needs pixels: this is where a missing mount becomes fatal
+if MOUNT_GAPS:
+    raise DatasetMissingError(
+        f"{len(MOUNT_GAPS)} required dataset(s) still not mounted: {MOUNT_GAPS}\\n"
+        "  Kaggle right sidebar -> Add Input -> attach them, re-run 1a, then this cell.\\n"
+        "  Sections 0 and 2 are already green, so the environment and the pretrained\\n"
+        "  weights are fine; only the image data is absent.")
 
 key = "data.classification_manifest"
 manifest_path = cfg.paths.data_curated / "all_classification.csv"

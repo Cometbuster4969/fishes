@@ -179,6 +179,12 @@ ENVIRONMENT OK - every required package imports.
 It exits non-zero and prints the actual pip error if anything required is missing. If it
 fails, **Run → Restart** before re-running `0b` (a plain re-run keeps the stale imports).
 
+**Cell order in every notebook is the same:** `0a` repo → `0b` environment (installs only
+what's missing) → `0c` config/resume state → then the numbered stages. In notebook 01,
+`1a` only *reports* mounts (`MOUNT_GAPS`), `2a` verifies the three checkpoints, `2b` prints
+the verdict, and `3a` is the first cell that stops on missing data. So you can prove the
+environment and the weights work while the datasets are still being attached.
+
 **First run = smoke test** (do this before spending GPU hours):
 
 1. Run cell `0a` → `repo: /kaggle/working/fishes | commit: …`

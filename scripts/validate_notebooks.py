@@ -64,6 +64,16 @@ def main() -> int:
             problems.append(f"{nb_path.name}: duplicate cell ids")
         n_code = 0
         for i, cell in enumerate(nb["cells"]):
+            # nbformat rejoins source with ''.join(); lines must carry their newline or
+            # the cell collapses into one line (and a leading '# @title' makes the whole
+            # cell a comment that silently does nothing).
+            bad_lines = [n for n, line in enumerate(cell["source"][:-1])
+                         if not line.endswith("\n")]
+            if bad_lines:
+                problems.append(
+                    f"{nb_path.name} cell {i}: {len(bad_lines)} source line(s) missing the "
+                    f"trailing newline (first at index {bad_lines[0]}) - the cell would "
+                    f"collapse into one line when opened in Jupyter")
             src = "".join(cell["source"])
             if cell["cell_type"] == "code":
                 n_code += 1

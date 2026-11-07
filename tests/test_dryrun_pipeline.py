@@ -305,3 +305,39 @@ def test_open_clip_install_uses_no_deps():
     assert oc.no_deps_with, "open-clip needs an explicit dep list for the --no-deps path"
     assert "tiktoken" in oc.no_deps_with and "huggingface-hub" in oc.no_deps_with
     assert oc.fallbacks, "keep version fallbacks in case the newest wheel misbehaves"
+
+
+# --------------------------------------------------------------------------- #
+# notebooks must survive nbformat's "".join(source) round-trip
+# --------------------------------------------------------------------------- #
+def test_notebooks_are_not_collapsed():
+    """nbformat rejoins a source array with ''.join(), so every line but the last must
+    keep its trailing newline. Without it each cell collapses into one line - and since
+    our code cells start with `# @title ...`, the whole cell silently becomes a comment.
+    """
+    import ast
+    import json
+
+    nbs = sorted((ROOT / "notebooks").glob("0*.ipynb")) if "ROOT" in globals() else sorted(
+        (Path(__file__).resolve().parents[1] / "notebooks").glob("0*.ipynb"))
+    assert len(nbs) == 6, f"expected 6 notebooks, found {len(nbs)}"
+    problems = []
+    for nb_path in nbs:
+        nb = json.loads(nb_path.read_text())
+        for i, cell in enumerate(nb["cells"]):
+            src_lines = cell["source"]
+            if any(not line.endswith("\n") for line in src_lines[:-1]):
+                problems.append(f"{nb_path.name} cell {i}: source lines missing newlines")
+            if cell["cell_type"] != "code":
+                continue
+            try:
+                tree = ast.parse("".join(src_lines))
+            except SyntaxError as exc:
+                problems.append(f"{nb_path.name} cell {i}: SyntaxError {exc.msg}")
+                continue
+            # a collapsed cell parses as one line; with the leading "# @title" comment
+            # that means zero statements, which is always wrong (a legitimate one-statement
+            # cell, e.g. a single if/else, still has body == 1)
+            if "@title" in "".join(src_lines) and not tree.body:
+                problems.append(f"{nb_path.name} cell {i}: collapsed to a comment-only cell")
+    assert not problems, "\n".join(problems)

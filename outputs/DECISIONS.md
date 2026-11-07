@@ -231,3 +231,29 @@ installed the audit raises `PretrainedDownloadError` with the exact command — 
 silently downgrade the audit. Optional packages (motmetrics, geopandas, folium, lightgbm,
 contextily, mapclassify, seaborn) are reported as `missing_optional` and the affected
 metrics state `not_computable` instead of inventing a value.
+
+---
+
+## D-20 · Notebook generator wrote source lines without their newlines
+**Observed problem.** `md()`/`code()` in `scripts/build_notebooks.py` did
+`text.split("\n")`, dropping the newline from every line. nbformat rejoins `source` with
+`"".join(...)`, so each cell collapsed into **one line**. Because every code cell starts
+with a `# @title` comment, the collapsed cell was one big comment: it parsed cleanly and
+then silently did nothing. `scripts/validate_notebooks.py` used the same `"".join(...)`, so
+`ast.parse` saw a valid comment and reported "all checks passed". Fixed in the generator
+(`_lines()` keeps the trailing newline on every line but the last) and the validator now
+also asserts the newline structure. `tests/test_dryrun_pipeline.py` gained
+`test_notebooks_are_not_collapsed`, and a real `ast.parse` of the joined cell text caught
+three cells (0a, 0b, 3a) whose error messages contained `\n` escapes that the generator's
+f-strings turned into physical newlines inside a string literal.
+**Lesson recorded.** Never trust "the cell compiles" when the first character is a comment;
+assert structure as well as syntax.
+
+## D-21 · Weights are proven before a missing dataset can stop the notebook
+Cell 1a used to raise `DatasetMissingError` immediately, so on a kernel with zero datasets
+the pretrained-weight checks in 2a never ran and "bad download" was indistinguishable from
+"missing data". Cell 1a now only reports (`MOUNT_GAPS`), 2a verifies the three checkpoints,
+2b prints `WEIGHTS OK, DATA MISSING -> attach [...]`, and the hard stop moved to 3a, the
+first cell that actually needs pixels. Verified offline with nothing mounted:
+`2 required dataset(s) MISSING: ['large_scale_fish', 'fish_detection_yolo']`,
+`WEIGHTS OK, DATA MISSING -> attach [...]`, then `DatasetMissingError` at 3a.
