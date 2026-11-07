@@ -1,16 +1,41 @@
-# Kaggle-only requirements (install inside the notebook, not in the repo venv).
-# Kaggle images already ship torch/torchvision/opencv; we only add what is missing
-# and pin the detector library to a version that actually has YOLOv12 + RT-DETR.
-ultralytics>=8.4.0
+# Kaggle-only requirements.
+#
+# PREFER:  !python scripts/kaggle_env.py
+#   That script installs only what is missing, one package at a time, shows the real
+#   pip error, and verifies every import afterwards. `pip install -r` is atomic: ONE
+#   unresolvable package installs nothing and the reason scrolls past.
+#
+# Use this file only if you want a single pip command:
+#   !pip install -r requirements-kaggle.txt
+#
+# Kaggle image (checked Nov 2026): Python 3.13, torch 2.11+cu130, torchvision 0.26+cu130,
+# timm 1.0.30, CUDA available. Don't pin torch/torchvision here - you would replace the
+# image's CUDA build with a PyPI build and break CUDA.
+#
+# REQUIRED (notebooks fail without these)
 timm>=1.0.11
-open-clip-torch>=2.26.1
+ultralytics>=8.4.0
 cleanlab>=2.6.6
 imagehash>=4.3.1
+lap>=0.5.12
+scikit-learn
+matplotlib
+seaborn
+# open-clip powers the BioCLIP zero-shot audit opinion. Install it with --no-deps so pip
+# cannot touch torch/torchvision:
+#   pip install --no-deps open-clip-torch tiktoken ftfy wcwidth regex huggingface-hub safetensors
+open-clip-torch>=2.26.1
+tiktoken
+ftfy
+wcwidth
+regex
+huggingface-hub
+safetensors
+# RECOMMENDED (spec section 7/9/10 features; notebooks mark them not_computable if absent)
 motmetrics>=1.4.0
 geopandas>=1.0
 folium>=0.17
-contextily>=1.6
 mapclassify>=2.8
+contextily>=1.6
 lightgbm>=4.5
 tensorboard>=2.17
-lap>=0.5.12

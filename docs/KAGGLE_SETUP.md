@@ -163,6 +163,22 @@ Order matters; each notebook is resumable and skips finished stages.
                   →  05_tracking_counting  →  06_density_map
 ```
 
+**Environment check (do this once per session).** Cell `0b` runs
+`scripts/kaggle_env.py`, which installs only what is missing and prints a table like:
+
+```
+module      required status     version / note
+torch       True     ok         2.11.0+cu130
+timm        True     ok         1.0.30
+open_clip   True     ok         4.2.1
+lap         True     ok         0.5.14
+...
+ENVIRONMENT OK - every required package imports.
+```
+
+It exits non-zero and prints the actual pip error if anything required is missing. If it
+fails, **Run → Restart** before re-running `0b` (a plain re-run keeps the stale imports).
+
 **First run = smoke test** (do this before spending GPU hours):
 
 1. Run cell `0a` → `repo: /kaggle/working/fishes | commit: …`
@@ -221,7 +237,9 @@ resume:
 |---|---|---|
 | `could not clone … (private)` | repo is private, no token | step 3 Option A/B/C |
 | `PretrainedDownloadError` | Internet off | Settings → Internet → On (needs phone verification) |
-| `ModuleNotFoundError: ultralytics` / stale API | pip cell didn't run | run cell `0b`, then **Restart & Run All** |
+| `open_clip_torch MISSING` after running the pip cell | `pip install -r` is **atomic** — one bad package installs nothing, and the error got cut off by `tail` | run `!python scripts/kaggle_env.py` (cell `0b` does this): it installs package-by-package, shows the real error, and uses `--no-deps` for open-clip so pip can't replace torch/torchvision |
+| `ModuleNotFoundError: ultralytics` / stale API | pip cell didn't run, or the kernel kept the old package | `!python scripts/kaggle_env.py`, then **Run → Restart** (a plain re-run keeps old imports) |
+| `BioCLIP needs the open_clip package` | same as above | `!python scripts/kaggle_env.py` then Restart |
 | `DatasetMissingError: large_scale_fish` | dataset not attached | Add Input → search `A Large Scale Fish Dataset` |
 | `DatasetMissingError: fish_detection_yolo` | your upload missing/renamed | step 4 (CLI); or edit `datasets.fish_detection_yolo.kaggle_input` |
 | `RuntimeError: 02_taxonomy_audit needs a GPU` | accelerator off | Settings → Accelerator → GPU P100 |

@@ -258,3 +258,50 @@ def test_label_normalisation_and_matching():
 
     assert match_label("xyzzy", keys).key is None
     assert match_label("Mackerel", keys).key == "mackerel"
+
+
+# --------------------------------------------------------------------------- #
+# environment installer (scripts/kaggle_env.py)
+# --------------------------------------------------------------------------- #
+def _load_kaggle_env(name: str = "kaggle_env"):
+    """Import scripts/kaggle_env.py by path (it is a script, not a package module)."""
+    import importlib.util
+    import sys as _sys
+    path = Path(__file__).resolve().parents[1] / "scripts" / "kaggle_env.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    _sys.modules[name] = mod          # dataclasses need the module registered
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_kaggle_env_report_without_installing(monkeypatch):
+    ke = _load_kaggle_env()
+
+    # pretend every required package imports, and one optional is missing
+    monkeypatch.setattr(ke, "importable", lambda m: (True, None)
+                        if m != "folium" else (False, "ModuleNotFoundError: folium"))
+    monkeypatch.setattr(ke, "installed_version", lambda pkg: "1.0.0")
+
+    recs = [ke.ensure(p, check_only=True) for p in ke.PACKAGES]
+    by_mod = {r["module"]: r for r in recs}
+    assert by_mod["open_clip"]["present"] is True
+    assert by_mod["folium"]["present"] is False
+    assert by_mod["folium"]["required"] is False          # optional -> must not block
+
+    required = {"timm", "ultralytics", "open_clip", "cleanlab", "imagehash", "lap",
+                "cv2", "sklearn", "matplotlib", "torch", "pandas", "numpy", "PIL"}
+    assert required <= {p.module for p in ke.PACKAGES if p.required}
+    # optional packages the notebooks degrade gracefully without
+    optional = {"motmetrics", "geopandas", "folium", "lightgbm", "contextily",
+                "mapclassify", "seaborn"}
+    assert optional.isdisjoint({p.module for p in ke.PACKAGES if p.required})
+
+
+def test_open_clip_install_uses_no_deps():
+    """open-clip must never drag pip into reinstalling torch inside the Kaggle image."""
+    ke = _load_kaggle_env("kaggle_env2")
+    oc = next(p for p in ke.PACKAGES if p.module == "open_clip")
+    assert oc.no_deps_with, "open-clip needs an explicit dep list for the --no-deps path"
+    assert "tiktoken" in oc.no_deps_with and "huggingface-hub" in oc.no_deps_with
+    assert oc.fallbacks, "keep version fallbacks in case the newest wheel misbehaves"

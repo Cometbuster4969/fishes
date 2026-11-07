@@ -106,13 +106,27 @@ if not writable:
           "/kaggle/working via configs/kaggle.yaml")
 """),
         code(f"""
-# @title 0b · Dependencies (only what the Kaggle image lacks)
-import os
-ON_KAGGLE = os.path.exists("/kaggle")
-if ON_KAGGLE:
-    %pip install -q {pip} 2>&1 | tail -5
+# @title 0b · Dependencies (per-package install, real errors shown)
+# `pip install -r ...` is atomic: one bad package installs nothing and the reason is easy
+# to miss. scripts/kaggle_env.py installs ONLY what is missing, one package at a time,
+# prints the actual pip error, and exits non-zero if something REQUIRED is absent
+# (timm, ultralytics, open-clip/BioCLIP, cleanlab, imagehash, lap, cv2, sklearn, matplotlib).
+import json, subprocess, sys
+from pathlib import Path
+
+if Path("/kaggle").exists():
+    rc = subprocess.run([sys.executable, "scripts/kaggle_env.py"]).returncode
+    report = Path("outputs/logs/env_report.json")
+    if report.exists():
+        rep = json.loads(report.read_text())
+        print("missing required:", rep["missing_required"] or "none")
+        print("missing optional:", rep["missing_optional"] or "none")
+    if rc != 0:
+        raise RuntimeError(
+            "environment incomplete - read the REQUIRED PACKAGES MISSING block above.\n"
+            "Then Run -> Restart (not just re-run), and run cells 0a + 0b again.")
 else:
-    print("not on Kaggle: skipped")
+    print("not on Kaggle: skipped (use requirements.txt for local dev)")
 """),
         code(f"""
 # @title 0c · Config, seeding, resume state, mount report

@@ -210,3 +210,24 @@ resolution from silently rewriting a label, which was the failure mode §4.2 is 
 (they produced `outputs/DATASETS.md`). They are not used by any notebook, are not required
 for a Kaggle run, and must not be mistaken for it. `outputs/DATASETS.md` remains as the
 record of what that environment could and could not reach.
+
+---
+
+## D-19 · Per-package environment installer supersedes `pip install -r`
+**Observed problem.** On Kaggle (Python 3.13, torch 2.11+cu130) `pip install -q -r
+requirements-kaggle.txt` left `open_clip_torch` uninstalled with no visible reason: `-r` is
+atomic, so one unresolvable package aborts the whole transaction, and the caller piped the
+output through `tail`, hiding the resolver error.
+**Decision.** `scripts/kaggle_env.py` is now the canonical installer and notebook cell `0b`
+calls it. It installs only missing packages, one at a time, prints the real pip error, writes
+`outputs/logs/env_report.json` and exits non-zero when a *required* package is absent.
+open-clip is installed with `--no-deps` plus its pure-python dependencies
+(`tiktoken, ftfy, wcwidth, regex, huggingface-hub, safetensors`) so pip can never replace the
+image's CUDA build of torch/torchvision; versions are tried in order
+`open-clip-torch>=4.0` → `==3.3.0` → `==2.32.0`. `requirements-kaggle.txt` stays as a
+single-command fallback and no longer pins torch/torchvision.
+**Unchanged.** BioCLIP remains *required* for the audit (spec 4.3.3): if it cannot be
+installed the audit raises `PretrainedDownloadError` with the exact command — it does not
+silently downgrade the audit. Optional packages (motmetrics, geopandas, folium, lightgbm,
+contextily, mapclassify, seaborn) are reported as `missing_optional` and the affected
+metrics state `not_computable` instead of inventing a value.
