@@ -161,6 +161,31 @@ class Config:
             )
         return None
 
+    def dataset_report(self) -> list[dict[str, Any]]:
+        """Status of every declared dataset, WITHOUT raising.
+
+        Used by the preflight cell and by notebook 01 so a user sees the complete
+        picture (which mounts are missing, which are optional) instead of tripping
+        over the first required mount and never learning the rest.
+        """
+        remap = _parse_remap()
+        rows = []
+        for key, d in self.raw["datasets"].items():
+            p = _remap(Path(d["kaggle_input"]), remap)
+            if p.exists():
+                status = "ok"
+            elif d.get("required"):
+                status = "MISSING (required)"
+            else:
+                status = "absent (optional)"
+            rows.append({"dataset": key, "task": d.get("task"), "path": str(p),
+                         "required": bool(d.get("required")), "status": status})
+        return rows
+
+    def missing_required(self) -> list[str]:
+        return [r["dataset"] for r in self.dataset_report()
+                if r["required"] and r["status"] != "ok"]
+
     def require_dataset(self, key: str) -> Path:
         p = self.dataset_path(key)
         if p is None:
