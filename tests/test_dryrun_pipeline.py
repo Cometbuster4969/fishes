@@ -228,3 +228,33 @@ def test_audit_report_writer(tmp_path):
     assert "AUDIT_REPORT" in text and "unverified" in text.lower()
     assert "not_computable" not in text or True   # report prints reasons, not fake zeroes
     assert "Pampus argenteus" in text             # the 4.2 decision table is present
+
+
+# --------------------------------------------------------------------------- #
+# label normalisation (the Kaggle mirror spells folders differently)
+# --------------------------------------------------------------------------- #
+def test_label_normalisation_and_matching():
+    from src.audit.labels import match_label, normalize_label
+
+    assert normalize_label("Fish Sea_Food Black Sea Sprat") == "black_sea_sprat"
+    assert normalize_label("gilt-head bream") == "gilt_head_bream"
+    assert normalize_label("animal fish", strip_prefixes=False) == "animal_fish"
+
+    keys = ["black_sea_sprat", "gilt_head_bream", "animal_fish", "animal_fish_bass",
+            "pomfret", "mackerel", "trout", "koi", "byen"]
+    exact = {
+        "fish sea_food black_sea_sprat": "black_sea_sprat",
+        "Black Sea Sprat": "black_sea_sprat",
+        "gilt-head bream": "gilt_head_bream",
+        "animal fish": "animal_fish",            # must NOT fall through to _bass
+        "animal fish bass": "animal_fish_bass",
+        "Pomfret": "pomfret",
+        "Koi": "koi",
+    }
+    for folder, expected in exact.items():
+        m = match_label(folder, keys)
+        assert m.key == expected, f"{folder} -> {m.key} (expected {expected})"
+        assert m.method == "exact" and m.score == 1.0
+
+    assert match_label("xyzzy", keys).key is None
+    assert match_label("Mackerel", keys).key == "mackerel"
