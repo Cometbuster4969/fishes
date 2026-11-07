@@ -43,30 +43,67 @@ Every stage writes into `/kaggle/working`, records itself in
 An interrupted session resumes from the last finished epoch/stage.
 """),
         code(f"""
-# @title 0a · Enter the repo (clone once if this notebook was uploaded alone)
+# @title 0a · Enter the repo (private repo: needs a GITHUB_TOKEN secret, or the repo as a Dataset)
 import os, subprocess, sys
 from pathlib import Path
 
-REPO_DIR = Path("/kaggle/working/fishes")
+REPO_SLUG = "{REPO.split('github.com/')[1].replace('.git','')}"
 BRANCH = "{BRANCH}"
+CLONE_DIR = Path("/kaggle/working/fishes")
 
-def _is_repo(p): return (p / "configs" / "kaggle.yaml").exists()
+def _is_repo(p):
+    return (p / "configs" / "kaggle.yaml").exists()
 
-if _is_repo(Path.cwd()):
-    REPO = Path.cwd()
-elif _is_repo(REPO_DIR):
-    REPO = REPO_DIR
-else:
-    REPO_DIR.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "clone", "--depth", "1", "-b", BRANCH, "{REPO}",
-                    str(REPO_DIR)], check=True)
-    REPO = REPO_DIR
+def _token():
+    tok = os.environ.get("GITHUB_TOKEN")
+    if tok:
+        return tok.strip()
+    try:
+        from kaggle_secrets import UserSecretsClient
+        return UserSecretsClient().get_secret("GITHUB_TOKEN").strip()
+    except Exception:
+        return None
+
+# 1) already inside a checkout?
+REPO = next((p for p in [Path.cwd(), *Path.cwd().parents] if _is_repo(p)), None)
+# 2) repo attached as a (read-only) Kaggle Dataset?
+if REPO is None:
+    for pattern in ("*/configs/kaggle.yaml", "*/*/configs/kaggle.yaml"):
+        hits = sorted(Path("/kaggle/input").glob(pattern)) if Path("/kaggle/input").exists() else []
+        if hits:
+            REPO = hits[0].parent.parent
+            break
+# 3) clone
+if REPO is None and _is_repo(CLONE_DIR):
+    subprocess.run(["git", "-C", str(CLONE_DIR), "pull", "-q", "origin", BRANCH], check=False)
+    REPO = CLONE_DIR
+if REPO is None:
+    CLONE_DIR.parent.mkdir(parents=True, exist_ok=True)
+    tok = _token()
+    url = (f"https://x-access-token:{{tok}}@github.com/{{REPO_SLUG}}.git" if tok
+           else f"https://github.com/{{REPO_SLUG}}.git")
+    res = subprocess.run(["git", "clone", "--depth", "1", "-b", BRANCH, url, str(CLONE_DIR)],
+                         capture_output=True, text=True)
+    if res.returncode != 0:
+        raise RuntimeError(
+            "could not clone " + REPO_SLUG + "\n  git: " + (res.stderr or "")[:300] +
+            "\n  The repo is PRIVATE. Do ONE of these, then re-run this cell:" +
+            "\n   1) Add-ons -> Secrets -> new secret GITHUB_TOKEN = a GitHub PAT with 'repo'"
+            " scope; enable it for this notebook." +
+            "\n   2) Upload the repo as a Kaggle Dataset (read-only under /kaggle/input)." +
+            "\n   3) Make the repository public on GitHub.")
+    REPO = CLONE_DIR
 
 os.chdir(REPO)
-sys.path.insert(0, str(REPO))
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+writable = os.access(REPO, os.W_OK)
 sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
-                     text=True).stdout.strip()
-print("repo:", REPO, "| commit:", sha)
+                     text=True).stdout.strip() or "unknown"
+print("repo:", REPO, "| commit:", sha, "| writable:", writable)
+if not writable:
+    print("note: code dir is read-only (attached dataset); all outputs still go to "
+          "/kaggle/working via configs/kaggle.yaml")
 """),
         code(f"""
 # @title 0b · Dependencies (only what the Kaggle image lacks)

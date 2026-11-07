@@ -24,7 +24,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-REPO_URL = "https://github.com/Cometbuster4969/fishes.git"
+REPO_SLUG = "Cometbuster4969/fishes"
+REPO_URL = f"https://github.com/{REPO_SLUG}.git"
 REPO_BRANCH = "arena/3dc076ac-fishes"
 
 
@@ -41,12 +42,37 @@ def _on_kaggle() -> bool:
     return Path("/kaggle").exists()
 
 
-def ensure_repo(prefer: Path | None = None) -> Path:
-    """Find the repo, or clone it into /kaggle/working.
+def _github_token() -> str | None:
+    """Token for a PRIVATE repo: env var first, then a Kaggle secret named GITHUB_TOKEN."""
+    tok = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if tok:
+        return tok.strip()
+    try:
+        from kaggle_secrets import UserSecretsClient
+        return UserSecretsClient().get_secret("GITHUB_TOKEN").strip()
+    except Exception:  # noqa: BLE001 - no secret configured is a normal case
+        return None
 
-    Notebooks are opened from the repo, so this is a no-op there; it matters when
-    the .ipynb is uploaded to Kaggle on its own.
-    """
+
+def _clone_url(token: str | None) -> str:
+    if token:
+        return f"https://x-access-token:{token}@github.com/{REPO_SLUG}.git"
+    return REPO_URL
+
+
+def _attached_repo() -> Path | None:
+    """The repo uploaded as a Kaggle Dataset appears read-only under /kaggle/input."""
+    root = Path("/kaggle/input")
+    if not root.exists():
+        return None
+    for pattern in ("*/configs/kaggle.yaml", "*/*/configs/kaggle.yaml"):
+        for cand in sorted(root.glob(pattern)):
+            return cand.parent.parent
+    return None
+
+
+def ensure_repo(prefer: Path | None = None) -> Path:
+    """Find the repo locally, in an attached dataset, or clone it into /kaggle/working."""
     here = Path.cwd()
     for cand in (prefer, here, *here.parents):
         if cand and (cand / "configs" / "kaggle.yaml").exists():
@@ -54,19 +80,31 @@ def ensure_repo(prefer: Path | None = None) -> Path:
                 sys.path.insert(0, str(cand))
             return cand
 
-    # attached repo as an input dataset?
-    for cand in sorted(Path("/kaggle/input").glob("*/configs/kaggle.yaml")) if Path(
-            "/kaggle/input").exists() else []:
-        repo = cand.parent.parent
-        if str(repo) not in sys.path:
-            sys.path.insert(0, str(repo))
-        return repo
+    attached = _attached_repo()
+    if attached is not None:
+        if str(attached) not in sys.path:
+            sys.path.insert(0, str(attached))
+        return attached
 
     dest = Path("/kaggle/working/fishes")
     if not (dest / "configs" / "kaggle.yaml").exists():
         dest.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["git", "clone", "--depth", "1", "-b", REPO_BRANCH, REPO_URL,
-                        str(dest)], check=True)
+        token = _github_token()
+        cmd = ["git", "clone", "--depth", "1", "-b", REPO_BRANCH, _clone_url(token), str(dest)]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            hint_private = "" if token else (
+                f"\n  The repository {REPO_SLUG} is PRIVATE (or the token is missing).")
+            raise RuntimeError(
+                "could not clone the GeoFish-AI repository into "
+                f"{dest}\n  git said: {(res.stderr or res.stdout).strip()[:300]}{hint_private}"
+                "\n  Pick one of these three fixes and re-run this cell:"
+                "\n   1) Add-ons -> Secrets -> add a secret named GITHUB_TOKEN holding a GitHub"
+                " personal access token with 'repo' scope, then enable it for this notebook."
+                "\n   2) Upload the repo as a Kaggle Dataset (it appears read-only under"
+                " /kaggle/input) - this works without internet at all."
+                "\n   3) Make the repository public (GitHub -> Settings -> Change visibility)."
+            )
     if str(dest) not in sys.path:
         sys.path.insert(0, str(dest))
     return dest

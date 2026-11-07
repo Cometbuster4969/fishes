@@ -17,13 +17,23 @@ notebooks/01_data_download.ipynb      →  02_taxonomy_audit.ipynb  →  03_dete
 
 ---
 
+> **Full step-by-step (private repo, dataset uploads, CLI, quota, troubleshooting):**
+> [`docs/KAGGLE_SETUP.md`](docs/KAGGLE_SETUP.md). The summary is below.
+
 ## 1. One-time Kaggle setup
 
-### 1.1 Import the repo
+### 1.1 Get the code onto Kaggle
 
-Upload the six notebooks (or this whole repo as a *File → Import → GitHub*) to Kaggle.
-Each notebook's first cell clones the repo into `/kaggle/working/fishes` if it is not
-already there, so a notebook can be run standalone.
+The repository is **private**, so cell `0a` needs one of these (see
+[`docs/KAGGLE_SETUP.md`](docs/KAGGLE_SETUP.md) §3):
+
+1. a Kaggle **secret named `GITHUB_TOKEN`** (GitHub PAT with `repo` scope) — cell `0a` clones
+   with it;
+2. the repo uploaded as a **Kaggle Dataset** — cell `0a` finds it under `/kaggle/input`
+   (works with Internet off);
+3. making the repo **public**.
+
+Upload/import `notebooks/01…06` as six notebooks; each one bootstraps the code itself.
 
 ### 1.2 Enable the two settings that matter
 
